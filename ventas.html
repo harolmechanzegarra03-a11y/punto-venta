@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="../css/style.css">
+</head>
+<body onload="verificarRol(); mostrarVentas();">
+<div class="solo-admin">
+    <a href="../dashboard.html">
+        <button>Ir al Panel Administrativo</button>
+    </a>
+</div>
+<h2>Ventas</h2>
+
+<div id="listaProductos"></div>
+
+<div id="carrito"></div>
+
+<button onclick="finalizarVenta()">Finalizar Venta</button>
+
+<script src="../js/db.js"></script>
+<script src="../js/permisos.js"></script>
+<script src="../js/ventas.js"></script>
+</body>
+</html>

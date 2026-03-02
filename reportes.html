@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Reportes</title>
+    <link rel="stylesheet" href="../css/style.css">
+
+    <style>
+        .card {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f5f5f5;
+        }
+
+        .venta-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .venta-header h3 {
+            margin: 0;
+        }
+
+        .detalle {
+            display: none;
+            margin-top: 10px;
+        }
+
+        .btn-eliminar {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body onload="iniciarReporte()">
+<button onclick="volver()" class="btn-volver">⬅ Volver</button>
+<h2>📊 Reportes</h2>
+
+<!-- FILTRO -->
+<div class="card">
+    <label><strong>📅 Filtrar por fecha:</strong></label>
+    <input type="date" id="fechaFiltro" onchange="mostrarReporte()">
+    <button onclick="document.getElementById('fechaFiltro').value=''; mostrarReporte();">
+        Mostrar Todo
+    </button>
+</div>
+
+<div id="reporte"></div>
+
+<script src="../js/db.js"></script>
+<script src="../js/permisos.js"></script>
+
+<script>
+
+function iniciarReporte(){
+    verificarRol();
+    mostrarReporte();
+}
+
+function formatearFecha(fecha){
+    let f = new Date(fecha);
+    return f.getFullYear() + "-" +
+        String(f.getMonth()+1).padStart(2,'0') + "-" +
+        String(f.getDate()).padStart(2,'0');
+}
+
+function toggleDetalle(index){
+    let detalle = document.getElementById("detalle-" + index);
+
+    if(detalle.style.display === "none"){
+        detalle.style.display = "block";
+        detalle.style.animation = "fadeIn 0.3s ease";
+    } else {
+        detalle.style.display = "none";
+    }
+}
+
+/* ✅ NUEVA FUNCIÓN: ELIMINAR VENTA */
+function eliminarVenta(id){
+    let confirmar = confirm(
+        "¿Seguro que deseas eliminar esta venta?\n" +
+        "⚠️ Esta acción no se puede deshacer."
+    );
+
+    if(!confirmar) return;
+
+    db.ventas = db.ventas.filter(v => v.id !== id);
+    guardarDB();
+    mostrarReporte();
+}
+
+function mostrarReporte(){
+
+    let contenedor = document.getElementById("reporte");
+    let fechaFiltro = document.getElementById("fechaFiltro").value;
+
+    if(!db.ventas || db.ventas.length === 0){
+        contenedor.innerHTML = `
+        <div class="card">
+            <h3>No hay ventas registradas</h3>
+        </div>`;
+        return;
+    }
+
+    let totalGeneral = 0;
+    let gananciaGeneral = 0;
+    let productosResumen = {};
+    let totalProductosVendidos = 0;
+
+    let html = "";
+    let hayResultados = false;
+
+    db.ventas.forEach((venta,index)=>{
+
+        if(!venta.detalle) return;
+
+        let fechaVenta = formatearFecha(venta.fecha);
+
+        if(fechaFiltro && fechaFiltro !== fechaVenta){
+            return;
+        }
+
+        hayResultados = true;
+
+        totalGeneral += Number(venta.total) || 0;
+        gananciaGeneral += Number(venta.ganancia) || 0;
+
+        html += `
+        <div class="card">
+
+            <div class="venta-header">
+                <h3 onclick="toggleDetalle(${index})">
+                    🧾 Venta #${venta.id}
+                </h3>
+
+                <div>
+                    <span>📅 ${new Date(venta.fecha).toLocaleString()}</span>
+                    <button class="btn-eliminar"
+                            onclick="event.stopPropagation(); eliminarVenta(${venta.id})">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+
+            <div id="detalle-${index}" class="detalle">
+
+                <p><strong>👤 Trabajador:</strong> ${venta.trabajador}</p>
+        `;
+
+        venta.detalle.forEach(item=>{
+
+            let cantidad = Number(item.cantidad) || 0;
+            let gananciaItem = Number(item.gananciaItem) || 0;
+
+            totalProductosVendidos += cantidad;
+
+            if(!productosResumen[item.nombre]){
+                productosResumen[item.nombre] = {
+                    vendidos: 0,
+                    ganancia: 0
+                };
+            }
+
+            productosResumen[item.nombre].vendidos += cantidad;
+            productosResumen[item.nombre].ganancia += gananciaItem;
+
+            html += `
+                <p>
+                📦 ${item.nombre} x${cantidad}
+                = S/ ${Number(item.subtotal).toFixed(2)}
+                </p>
+            `;
+        });
+
+        html += `
+                <h4>💰 Total: S/ ${Number(venta.total).toFixed(2)}</h4>
+                <h4>📈 Ganancia: S/ ${Number(venta.ganancia).toFixed(2)}</h4>
+            </div>
+        </div>
+        `;
+    });
+
+    if(!hayResultados){
+        contenedor.innerHTML = `
+        <div class="card">
+            <h3>No hay ventas en esa fecha</h3>
+        </div>`;
+        return;
+    }
+
+    /* RESUMEN GENERAL */
+    let resumenHTML = `
+    <div class="card">
+        <h2>📊 Resumen General</h2>
+        <p><strong>📦 Productos Vendidos:</strong> ${totalProductosVendidos}</p>
+        <p><strong>💰 Total Ventas:</strong> S/ ${totalGeneral.toFixed(2)}</p>
+        <p><strong>📈 Ganancia Total:</strong> S/ ${gananciaGeneral.toFixed(2)}</p>
+    </div>
+    `;
+
+    /* RESUMEN POR PRODUCTO */
+    resumenHTML += `<div class="card"><h2>📦 Resumen por Producto</h2>`;
+
+    for(let nombre in productosResumen){
+        resumenHTML += `
+        <p>
+            <strong>${nombre}</strong><br>
+            Vendidos: ${productosResumen[nombre].vendidos}<br>
+            Ganancia: S/ ${productosResumen[nombre].ganancia.toFixed(2)}
+        </p>
+        <hr>
+        `;
+    }
+
+    resumenHTML += `</div>`;
+
+    contenedor.innerHTML = resumenHTML + html;
+}
+</script>
+
+</body>
+</html>
