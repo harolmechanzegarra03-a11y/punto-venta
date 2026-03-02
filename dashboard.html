@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Panel Administrativo</title>
+<link rel="stylesheet" href="css/style.css">
+
+<!-- Librería Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body onload="verificarRol(); cargarGraficoGanancias();">
+
+<h1>Panel Administrativo</h1>
+
+<!-- BOTONES ARRIBA -->
+<div class="card">
+
+<button onclick="window.location.href='Pages/ventas.html'">
+🛒 Ir a Ventas
+</button>
+
+<button onclick="window.location.href='Pages/compras.html'">
+📦 Ir a Compras
+</button>
+
+<button onclick="window.location.href='Pages/inventario.html'">
+📋 Ir a Inventario
+</button>
+
+<button onclick="window.location.href='Pages/reportes.html'">
+📊 Ir a Reportes
+</button>
+
+<button onclick="cerrarSesion()">
+🚪 Cerrar Sesión
+</button>
+
+</div>
+
+<!-- BIENVENIDO -->
+<div class="card">
+<h2>Bienvenido</h2>
+<p>Rol:admi <span id="rolUsuario"></span></p>
+</div>
+
+<!-- GRÁFICO -->
+<div class="card">
+<h2>📊 Ganancias por Mes</h2>
+<canvas id="graficoGanancias"></canvas>
+</div>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/permisos.js"></script>
+
+<script>
+function cargarGraficoGanancias(){
+
+    let ventas = JSON.parse(localStorage.getItem("ventas")) || [];
+
+    if(ventas.length === 0){
+        console.warn("No hay ventas para el gráfico");
+        return;
+    }
+
+    let gananciasPorMes = {};
+
+    ventas.forEach(venta => {
+
+        if(!venta.fecha || !venta.ganancia) return;
+
+        let fecha = new Date(venta.fecha);
+        if(isNaN(fecha)) return;
+
+        let mes = (fecha.getMonth() + 1).toString().padStart(2, "0") 
+                  + "/" + fecha.getFullYear();
+
+        if(!gananciasPorMes[mes]){
+            gananciasPorMes[mes] = 0;
+        }
+
+        gananciasPorMes[mes] += Number(venta.ganancia);
+    });
+
+    let labels = Object.keys(gananciasPorMes);
+    let data = Object.values(gananciasPorMes);
+
+    if(labels.length === 0){
+        console.warn("No hay datos válidos para el gráfico");
+        return;
+    }
+
+    let ctx = document.getElementById("graficoGanancias").getContext("2d");
+
+    new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: labels,
+            datasets: [{
+                label: "Ganancias (S/)",
+                data: data,
+                backgroundColor: "rgba(54, 162, 235, 0.7)",
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: true }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+</script>
+
+</body>
+</html>
